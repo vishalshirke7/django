@@ -91,7 +91,7 @@ def logout(request):
         return render(request,'signup/logout.html')        
   
 def activate(request, uid, link):
-       try:
+    try:
         uid = uid
         user = User.objects.get(pk=uid)
     except(TypeError, ValueError, OverflowError, User.DoesNotExist):
@@ -106,7 +106,7 @@ def activate(request, uid, link):
             request.session['uspw']=uspw  
             user.save()
             current_site = get_current_site(request)
-            mail_subject = 'Activate your account.'
+            mail_subject = 'Password for your account.'
             message = render_to_string('signup/acc_password_email.html', {
                     'user': user,
                     'domain': current_site.domain,
