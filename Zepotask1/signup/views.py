@@ -34,7 +34,6 @@ def register(request):
             user.user_isactive = False
             user.user_verf_link = user_verf_link
             user.save() 
-            #request.session['link'] = user_verf_link
             current_site = get_current_site(request)
             mail_subject = 'Activate your account.'
             message = render_to_string('signup/acc_active_email.html', {
@@ -92,8 +91,7 @@ def logout(request):
         return render(request,'signup/logout.html')        
   
 def activate(request, uid, link):
-    #link1 = request.session['link']
-    try:
+       try:
         uid = uid
         user = User.objects.get(pk=uid)
     except(TypeError, ValueError, OverflowError, User.DoesNotExist):
@@ -129,4 +127,4 @@ def handler404(request):
 
 def handler500(request):
     return render(request, 'signup/error_500.html',status=500)
-    
+        
