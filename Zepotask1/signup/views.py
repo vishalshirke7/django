@@ -5,71 +5,128 @@ from .models import User
 from django.urls import reverse
 from django.contrib.auth import login, authenticate
 from django.contrib.sites.shortcuts import get_current_site
-from django.utils.encoding import force_bytes, force_text
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.template.loader import render_to_string
-from .tokens import account_activation_token
 from django.core.mail import EmailMessage
-
+from .forms import SignupForm, LoginForm
+from signup.random_string_generator import random_string_generator_c
 
 
 def index(request):
-    return render(request,'signup/index.html')
-	
+    if 'user_id' in request.session:
+        userid = request.session['user_id']
+        user = User.objects.get(pk=userid)
+        return HttpResponseRedirect(reverse('signup:loginview', args=(user.user_fname,)))
+    else:
+        return render(request,'signup/index.html')
+        
+
+        	
 def register(request):
-    return render(request,'signup/register.html')
-	
-def verify(request):
     if request.method == 'POST':
-        user=User()
-        user.user_fname=request.POST.get('fnm')
-        user.user_lname=request.POST.get('lnm')
-        user.user_email=request.POST.get('email')
-        user.user_isactive=False
-        user.save()
-        current_site = get_current_site(request)
-        mail_subject = 'Activate your blog account.'
-        message = render_to_string('signup/acc_active_email.html', {
+        form = SignupForm(request.POST)  
+        if form.is_valid():
+            user = User()
+            user.user_fname = form.cleaned_data['fname'].strip()
+            user.user_lname = form.cleaned_data['lname'].strip()
+            user.user_email = form.cleaned_data['email'].strip()
+            ranstr = random_string_generator_c()
+            user_verf_link =  ranstr.id_generator(size=17,chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz")      
+            user.user_isactive = False
+            user.user_verf_link = user_verf_link
+            user.save() 
+            #request.session['link'] = user_verf_link
+            current_site = get_current_site(request)
+            mail_subject = 'Activate your account.'
+            message = render_to_string('signup/acc_active_email.html', {
                 'user': user,
                 'domain': current_site.domain,
-                'uid': urlsafe_base64_encode(force_bytes(user.pk)).decode(),
-                'token': account_activation_token.make_token(user),
+                'uid' : user.id,                
+                'link':user_verf_link,
             })
-        print(message)
-        to_email = request.POST.get('email')
-        email = EmailMessage(
+            to_email = form.cleaned_data.get('email')
+            email = EmailMessage(
                         mail_subject, message, to=[to_email]
             )
-        email.send()
-                
-    return render(request,'signup/verify.html')	
+            email.send()
+            return render(request,'signup/verify.html')	
+    else:
+        form = SignupForm()
 
-def activate(request, uidb64, token):
+    return render(request, 'signup/register.html', {'form': form})
+
+def login(request): 
+    if request.method == 'POST':  
+        form = LoginForm(request.POST)
+        if form.is_valid(): 
+            user = User.objects.get(user_email=request.POST['username'])
+            if user.user_password == request.POST['password']:
+                request.session['user_id'] = user.id
+                #context = {'username': user.user_fname,'user': user}        
+                return HttpResponseRedirect(reverse('signup:loginview', args=(user.user_fname,)))	
+    elif 'user_id' in request.session:
+        userid = request.session['user_id']
+        user = User.objects.get(pk=userid)
+        return HttpResponseRedirect(reverse('signup:loginview', args=(user.user_fname,)))
+        #return render(request,'signup/welcome.html',{'user': user})
+    else:
+        form = LoginForm()
+    return render(request, 'signup/login.html', {'form': form})
+
+
+def loginview(request, username):
+    if 'user_id' in request.session:
+        userid = request.session['user_id']
+        user = User.objects.get(pk=userid)
+        username1 = user.user_fname
+        if(username == username1):
+            return render(request,'signup/welcome.html', {'user': user})
+    else:
+        return HttpResponse('<h2 style="text-align:center;color:red;font-size:70px">We caught you! <h2>')
+    
+
+def logout(request):
+        try:
+            del request.session['user_id']
+        except KeyError:
+            pass    #return HttpResponse('<h2 style="text-align:center;color:red;;font-size:70px">We caught you! <h2>')
+        return render(request,'signup/logout.html')        
+  
+def activate(request, uid, link):
+    #link1 = request.session['link']
     try:
-        uid = force_text(urlsafe_base64_decode(uidb64))
+        uid = uid
         user = User.objects.get(pk=uid)
     except(TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
-    if user is not None and account_activation_token.check_token(user, token):
-        user.user_isactive = True
-        my_password=User.objects.make_random_password(8)
-        user.set_password(my_password)
-        user.save()
-        current_site = get_current_site(request)
-        mail_subject = 'Password for your account.'
-        message = render_to_string('{Hi {{ user.user_fname }}, This is the password for your account {{user.get_password()}}', {
-                'user': user,
-                'domain': current_site.domain,
-                'password': my_password})
-        print(message)
-        to_email = request.POST.get('email')
-        email = EmailMessage(
-                        mail_subject, message, to=[to_email]
-            )
-        email.send()
-        #login(request, user)        
-        return render(request,'signup/index.html')
+    link1= user.user_verf_link
+    if user.user_password == "":
+        if user is not None and link == link1:
+            user.user_isactive = True
+            ranstr = random_string_generator_c()
+            uspw =  ranstr.id_generator(size=7,chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz") 
+            user.user_password = uspw
+            request.session['uspw']=uspw  
+            user.save()
+            current_site = get_current_site(request)
+            mail_subject = 'Activate your account.'
+            message = render_to_string('signup/acc_password_email.html', {
+                    'user': user,
+                    'domain': current_site.domain,
+                    'uspw' : uspw,                
+            })
+            to_email = user.user_mail()
+            email = EmailMessage(
+                      mail_subject, message, to=[to_email])
+            email.send() 
+            return render(request,'signup/successfulreg.html')
+    elif link != link1:
+        return HttpResponse('<html><h3 style="color:red;text-align:center;font-size:60px">Activation link is invalid!<h3></html>')
     else:
-        return HttpResponse('Activation link is invalid!')
-#def login(request)
-  #  return render(request, 'signup/login.html')
+        return render(request,'signup/already_signedin.html')
+        
+def handler404(request):
+    return render(request, 'signup/error_404.html',status=404)
+
+def handler500(request):
+    return render(request, 'signup/error_500.html',status=500)
+    
