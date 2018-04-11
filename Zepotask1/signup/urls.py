@@ -8,6 +8,7 @@ urlpatterns=[
 	path('',views.index,name='index'),
 	path('signup/',views.register,name='register'),
     path('<int:uid>/<link>',views.activate, name='activate'),
+    path('setuppassword',views.setpassword, name='setpassword'),
     path('login/',views.login,name='login'),
     path('welcome_<username>',views.loginview, name='loginview'),
     path('logout/',views.logout,name='logout'),

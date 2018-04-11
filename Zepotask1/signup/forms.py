@@ -36,6 +36,21 @@ class LoginForm(forms.Form):
                 raise forms.ValidationError("Invalid Login")
         return self.cleaned_data
 
+class PasswordForm(forms.Form):
+    password = forms.CharField(label="New Password", max_length=10,widget=forms.PasswordInput,required=True)
+    repassword = forms.CharField(label="Re-type Password", max_length=10,widget=forms.PasswordInput,required=True)
+    class Meta:
+        model = User
+    
+    def clean_repassword(self):
+        psw = self.cleaned_data.get('password')
+        repsw = self.cleaned_data.get('repassword')
+        if psw != repsw:
+            raise forms.ValidationError("Password doesn't match!")
+        return self.cleaned_data
+
+
+
     #def login_f(self, request):
      #   username = self.cleaned_data.get('username')
       #  password = self.cleaned_data.get('password')

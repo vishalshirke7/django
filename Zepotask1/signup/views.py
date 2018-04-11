@@ -71,6 +71,19 @@ def login(request):
         form = LoginForm()
     return render(request, 'signup/login.html', {'form': form})
 
+def setpassword(request):
+    if request.method == 'POST':
+        form = PasswordForm(request.POST)
+        if form.is_valid(): 
+            user = User.objects.get(user_password=request.POST['password'])
+            user.user_password = form.cleaned_data['fname'].strip()
+            user.save()
+            
+    else:
+        form = PasswordForm()
+    return render(request, 'signup/setpassword.html', {'form': form})
+
+        
 
 def loginview(request, username):
     if 'user_id' in request.session:
@@ -97,30 +110,24 @@ def activate(request, uid, link):
     except(TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
     link1= user.user_verf_link
-    if user.user_password == "":
-        if user is not None and link == link1:
-            user.user_isactive = True
-            ranstr = random_string_generator_c()
-            uspw =  ranstr.id_generator(size=7,chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz") 
-            user.user_password = uspw
-            request.session['uspw']=uspw  
-            user.save()
-            current_site = get_current_site(request)
-            mail_subject = 'Password for your account.'
-            message = render_to_string('signup/acc_password_email.html', {
-                    'user': user,
-                    'domain': current_site.domain,
-                    'uspw' : uspw,                
-            })
-            to_email = user.user_mail()
-            email = EmailMessage(
-                      mail_subject, message, to=[to_email])
-            email.send() 
-            return render(request,'signup/successfulreg.html')
+    #if user.user_password == "":
+    if user is not None and link == link1:
+        user.user_isactive = True
+        if request.method == 'POST':
+            form = PasswordForm(request.POST)
+            if form.is_valid():
+                user = User.objects.get(user_password=request.POST['password'])
+                user.user_password = form.cleaned_data['fname'].strip()
+                user.save()
+                return render(request, 'signup/accountsetup.html')
+        else:
+            form = PasswordForm()
+        return render(request, 'signup/setpassword.html', {'form': form})
+            #request.session['uspw']=uspw  
     elif link != link1:
         return HttpResponse('<html><h3 style="color:red;text-align:center;font-size:60px">Activation link is invalid!<h3></html>')
     else:
-        return render(request,'signup/already_signedin.html')
+        pass
         
 def handler404(request):
     return render(request, 'signup/error_404.html',status=404)
