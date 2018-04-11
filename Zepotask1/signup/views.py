@@ -7,7 +7,7 @@ from django.contrib.auth import login, authenticate
 from django.contrib.sites.shortcuts import get_current_site
 from django.template.loader import render_to_string
 from django.core.mail import EmailMessage
-from .forms import SignupForm, LoginForm
+from .forms import SignupForm, LoginForm, PasswordForm
 from signup.random_string_generator import random_string_generator_c
 
 
@@ -58,10 +58,8 @@ def login(request):
         form = LoginForm(request.POST)
         if form.is_valid(): 
             user = User.objects.get(user_email=request.POST['username'])
-            if user.user_password == request.POST['password']:
-                request.session['user_id'] = user.id
-                #context = {'username': user.user_fname,'user': user}        
-                return HttpResponseRedirect(reverse('signup:loginview', args=(user.user_fname,)))	
+            request.session['user_id'] = user.id
+            return HttpResponseRedirect(reverse('signup:loginview', args=(user.user_fname,)))	
     elif 'user_id' in request.session:
         userid = request.session['user_id']
         user = User.objects.get(pk=userid)
@@ -116,17 +114,21 @@ def activate(request, uid, link):
         if request.method == 'POST':
             form = PasswordForm(request.POST)
             if form.is_valid():
-                user = User.objects.get(user_password=request.POST['password'])
-                user.user_password = form.cleaned_data['fname'].strip()
+                uspw = form.cleaned_data['password']
+                ranstr = random_string_generator_c()
+                userpasw = ranstr.hash_password(uspw)
+                user.user_password = userpasw
                 user.save()
-                return render(request, 'signup/accountsetup.html')
+                return render(request, 'signup/account_setup.html')
+        elif user.user_password !=  '':        
+            return HttpResponseRedirect(reverse('signup:index'))                   
         else:
             form = PasswordForm()
-        return render(request, 'signup/setpassword.html', {'form': form})
+            return render(request, 'signup/setpassword.html', {'form': form, 'user': user})
             #request.session['uspw']=uspw  
     elif link != link1:
         return HttpResponse('<html><h3 style="color:red;text-align:center;font-size:60px">Activation link is invalid!<h3></html>')
-    else:
+    else: 
         pass
         
 def handler404(request):
