@@ -2,5 +2,5 @@
 Hi {{ user.user_fname }},
 Please click on the link to confirm your registration,
 
-http://{{ domain }}{% url 'signup:activate' uid link %}
+http://{{ domain }}{% url 'signup:activate' link %}
 {% endautoescape %}

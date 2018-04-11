@@ -1,5 +1,6 @@
 from django import forms
 from .models import User
+from signup.random_string_generator import random_string_generator_c
 
 class SignupForm(forms.Form):
     fname = forms.CharField(label="First Name", max_length=50,required=True)
@@ -25,12 +26,14 @@ class LoginForm(forms.Form):
 
     def clean(self):
         username = self.cleaned_data.get('username')
-        password = self.cleaned_data.get('password')        
+        password = self.cleaned_data.get('password')
+        ranstrng = random_string_generator_c()
+        userpasw = ranstrng.hash_password(password)       
         try:
             user = User.objects.get(user_email=username)
             if user.user_isactive == False:
                 raise forms.ValidationError("Account Not verified !")
-            elif user.user_password != password:
+            elif user.user_password != userpasw:
                 raise forms.ValidationError("Sorry, wrong username or password !")
         except User.DoesNotExist:
                 raise forms.ValidationError("Invalid Login")
