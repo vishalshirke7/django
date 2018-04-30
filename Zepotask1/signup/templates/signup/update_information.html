@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zepo</title>
+</head>
+<body>
+<h2 style="text-align:center;padding-top:30px">Update your information {{ user.user_fname}}</h2>
+<div action="" style="text-align:center;padding-top:200px">
+<form method="post">
+{% csrf_token %}
+     {{ form }}
+<input type="submit" value="Update" />
+</form>
+</div>
+</body>
+</html>
